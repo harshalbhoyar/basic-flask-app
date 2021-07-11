@@ -1,0 +1,507 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+
+	"Description": "Template for creating two NAT Gateways in a new VPC. After successfully launching this CloudFormation stack, you will have 4 subnet in 2 AZs (a pair of pubilic/private subnets in each AZ), with NAT Gateways routing outbound traffic for their respective private subnets.",
+
+	"Parameters": {
+
+		"InstanceKey": {
+			"Default": "dev_key",
+			"Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances",
+			"Type": "String",
+			"MinLength": "1",
+			"MaxLength": "64",
+			"AllowedPattern": "[-_ a-zA-Z0-9]*",
+			"ConstraintDescription": "can contain only alphanumeric characters, spaces, dashes and underscores."
+		},
+
+		"EC2InstanceType": {
+			"Description": "Instance type for EC2 nodes.",
+			"Type": "String",
+			"Default": "t2.micro",
+			"AllowedValues": ["t2.micro", "t1.micro", "t2.medium", "m1.small", "m1.medium", "m1.large", "m1.xlarge", "m2.xlarge", "m2.2xlarge", "m2.4xlarge", "m3.medium", "m3.xlarge", "c1.medium", "c1.xlarge", "cc1.4xlarge", "cc2.8xlarge", "cg1.4xlarge", "m5.large", "m5.xlarge", "m5.2xlarge", "m5.4xlarge", "m5.12xlarge", "m5.24xlarge", "m5.24xlarge"],
+			"ConstraintDescription": "must be a valid EC2 instance type."
+		},
+
+		"VpcCidr": {
+			"Description": "CIDR address for the VPC to be created.",
+			"Type": "String",
+			"Default": "10.0.0.0/16"
+		},
+		"SubnetIpBlocks": {
+			"Description": "Comma-delimited list of CIDR blocks",
+			"Type": "CommaDelimitedList",
+			"Default": "10.0.0.0/24, 10.0.1.0/24, 10.0.2.0/24"
+		}
+	},
+	"Mappings": {
+		"AWSEC2INSTANCEAMIAMAZON": {
+			"us-west-1": {
+				"AMI": "ami-0ed05376b59b90e46"
+			}
+		}
+	},
+	"Resources": {
+
+		"VPC": {
+			"Type": "AWS::EC2::VPC",
+			"Properties": {
+				"CidrBlock": {
+					"Ref": "VpcCidr"
+				},
+				"InstanceTenancy": "default",
+				"EnableDnsSupport": "true",
+				"EnableDnsHostnames": "true",
+				"Tags": [{
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Public"
+				}, {
+					"Key": "Name",
+					"Value": "DEV-VPC"
+				}]
+			}
+		},
+
+		"PubSubnet1": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"VpcId": {
+					"Ref": "VPC"
+				},
+
+				"AvailabilityZone": {
+					"Fn::Select": [
+						"0",
+						{
+							"Fn::GetAZs": ""
+						}
+					]
+				},
+
+				"CidrBlock": {
+
+					"Fn::Select": ["0", {
+						"Ref": "SubnetIpBlocks"
+					}]
+
+				},
+				"Tags": [{
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Public"
+				}, {
+					"Key": "Name",
+					"Value": "PublicSubnet1"
+				}]
+			}
+		},
+
+		"PriSubnet1": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"VpcId": {
+					"Ref": "VPC"
+				},
+
+				"AvailabilityZone": {
+					"Fn::Select": [
+						"0",
+						{
+							"Fn::GetAZs": ""
+						}
+					]
+				},
+				"CidrBlock": {
+
+					"Fn::Select": ["1", {
+						"Ref": "SubnetIpBlocks"
+					}]
+
+				},
+				"Tags": [{
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Private"
+				}, {
+					"Key": "Name",
+					"Value": "PrivateSubnet1"
+				}]
+			}
+		},
+
+		"PriSubnet2": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"VpcId": {
+					"Ref": "VPC"
+				},
+
+				"AvailabilityZone": {
+					"Fn::Select": [
+						"1",
+						{
+							"Fn::GetAZs": ""
+						}
+					]
+				},
+				"CidrBlock": {
+
+					"Fn::Select": ["2", {
+						"Ref": "SubnetIpBlocks"
+					}]
+
+				},
+				"Tags": [{
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Private"
+				}, {
+					"Key": "Name",
+					"Value": "PrivateSubnet2"
+				}]
+			}
+		},
+
+		"InternetGateway": {
+			"Type": "AWS::EC2::InternetGateway",
+			"Properties": {
+				"Tags": [{
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Public"
+				}]
+			}
+		},
+
+		"GatewayToInternet": {
+			"Type": "AWS::EC2::VPCGatewayAttachment",
+			"Properties": {
+				"VpcId": {
+					"Ref": "VPC"
+				},
+				"InternetGatewayId": {
+					"Ref": "InternetGateway"
+				}
+			}
+		},
+
+		"PublicRouteTable": {
+			"Type": "AWS::EC2::RouteTable",
+			"Properties": {
+				"VpcId": {
+					"Ref": "VPC"
+				},
+				"Tags": [{
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Public"
+				}, {
+					"Key": "Name",
+					"Value": "PublicRouteTable"
+				}]
+			}
+		},
+
+		"PrivateRouteTable1": {
+			"Type": "AWS::EC2::RouteTable",
+			"Properties": {
+				"VpcId": {
+					"Ref": "VPC"
+				},
+				"Tags": [{
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Private"
+				}, {
+					"Key": "Name",
+					"Value": "PrivateRouteTable1"
+				}]
+			}
+		},
+
+		"PublicRoute": {
+			"Type": "AWS::EC2::Route",
+			"Properties": {
+				"RouteTableId": {
+					"Ref": "PublicRouteTable"
+				},
+				"DestinationCidrBlock": "0.0.0.0/0",
+				"GatewayId": {
+					"Ref": "InternetGateway"
+				}
+			}
+		},
+
+		"NATGateway1EIP": {
+			"Type": "AWS::EC2::EIP",
+			"Properties": {
+				"Domain": "vpc",
+				"Tags": [{
+					"Key": "Name",
+					"Value": "NATGateway1EIP"
+				}]
+			}
+		},
+
+		"NATGateway1": {
+			"Type": "AWS::EC2::NatGateway",
+			"DependsOn": "GatewayToInternet",
+			"Properties": {
+				"AllocationId": {
+					"Fn::GetAtt": [
+						"NATGateway1EIP",
+						"AllocationId"
+					]
+				},
+				"SubnetId": {
+					"Ref": "PubSubnet1"
+				},
+				"Tags": [{
+					"Key": "Name",
+					"Value": "NATGateway1"
+				}]
+			}
+		},
+
+		"PrivateRoute1": {
+			"Type": "AWS::EC2::Route",
+			"Properties": {
+				"RouteTableId": {
+					"Ref": "PrivateRouteTable1"
+				},
+				"DestinationCidrBlock": "0.0.0.0/0",
+				"NatGatewayId": {
+					"Ref": "NATGateway1"
+				}
+			}
+		},
+
+		"PubSubnet1RTAssoc": {
+			"Type": "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties": {
+				"SubnetId": {
+					"Ref": "PubSubnet1"
+				},
+				"RouteTableId": {
+					"Ref": "PublicRouteTable"
+				}
+			}
+		},
+
+		"PriSubnet1RTAssoc": {
+			"Type": "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties": {
+				"SubnetId": {
+					"Ref": "PriSubnet1"
+				},
+				"RouteTableId": {
+					"Ref": "PrivateRouteTable1"
+				}
+			}
+		},
+
+		"PriSubnet2RTAssoc": {
+			"Type": "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties": {
+				"SubnetId": {
+					"Ref": "PriSubnet2"
+				},
+				"RouteTableId": {
+					"Ref": "PrivateRouteTable1"
+				}
+			}
+		},
+
+		"AppServerSG": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "App Server Security Group",
+				"VpcId": {
+					"Ref": "VPC"
+				},
+				"Tags": [{
+					"Key": "Name",
+					"Value": "AppServerSG"
+				}],
+				"SecurityGroupIngress": [{
+					"Description": "VPC Cidr",
+					"IpProtocol": "-1",
+					"CidrIp": {
+						"Ref": "VpcCidr"
+					}
+				}, {
+					"IpProtocol": "tcp",
+					"FromPort": "22",
+					"ToPort": "22",
+					"CidrIp": "157.33.64.198/32",
+					"Description": "MyIP"
+				}, {
+					"IpProtocol": "tcp",
+					"FromPort": "5000",
+					"ToPort": "5000",
+					"CidrIp": "157.33.64.198/32",
+					"Description": "MyIP"
+				}]
+			}
+		},
+
+		"PGDBSG": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "Postgres DB Security Group",
+				"VpcId": {
+					"Ref": "VPC"
+				},
+				"Tags": [{
+					"Key": "Name",
+					"Value": "PGDBSG"
+				}],
+				"SecurityGroupIngress": [{
+					"IpProtocol": "tcp",
+					"FromPort": "5432",
+					"ToPort": "5432",
+					"CidrIp": {
+						"Ref": "VpcCidr"
+					},
+					"Description": "VPC Cidr"
+				}]
+			}
+		},
+
+		"DbSubnetGroup": {
+			"Type": "AWS::RDS::DBSubnetGroup",
+			"Properties": {
+				"DBSubnetGroupDescription": "Availability Zones for RDS DB",
+				"SubnetIds": [{
+					"Ref": "PriSubnet1"
+				},{
+					"Ref": "PriSubnet2"
+				}]
+			}
+		},
+
+		"DBRDSINSTANCE": {
+			"Type": "AWS::RDS::DBInstance",
+			"Properties": {
+				"DBName": "PGDB",
+				"AllocatedStorage": "20",
+				"DBInstanceClass": "db.t3.small",
+				"Engine": "postgres",
+				"EngineVersion": "13.2",
+				"DBInstanceIdentifier": "pgdb",
+				"MasterUsername": "postgres",
+				"MasterUserPassword": "postgres",
+				"Port": "5432",
+				"StorageType": "gp2",
+				"BackupRetentionPeriod": "1",
+				"LicenseModel": "postgresql-license",
+				"MultiAZ": "true",
+				"AllowMajorVersionUpgrade": "false",
+				"PubliclyAccessible": "false",
+				"Tags": [{
+					"Key": "Name",
+					"Value": "pgdb"
+				}],
+				"VPCSecurityGroups": [{
+					"Ref": "PGDBSG"
+				}],
+				"DBSubnetGroupName": {
+					"Ref": "DbSubnetGroup"
+				}
+			}
+		},
+
+		"AppServer": {
+			"Type": "AWS::EC2::Instance",
+			"Metadata": {
+				"Comment1": "Create app server"
+			},
+			"Properties": {
+				"InstanceType": {
+					"Ref": "EC2InstanceType"
+				},
+				"KeyName": {
+					"Ref": "InstanceKey"
+				},
+				"ImageId": {
+					"Fn::FindInMap": ["AWSEC2INSTANCEAMIAMAZON", {
+						"Ref": "AWS::Region"
+					}, "AMI"]
+				},
+				"Tags": [{
+					"Key": "Name",
+					"Value": "AppServer"
+				}],
+				"NetworkInterfaces": [{
+					"AssociatePublicIpAddress": "True",
+					"DeleteOnTermination": "True",
+					"DeviceIndex": "0",
+					"SubnetId": {
+						"Ref": "PubSubnet1"
+					},
+					"GroupSet": [{
+						"Ref": "AppServerSG"
+					}]
+				}]
+			}
+		},
+
+		"AppServerEIP": {
+			"Type": "AWS::EC2::EIP",
+			"Properties": {
+				"Domain": "vpc",
+				"InstanceId": {
+					"Ref": "AppServer"
+				},
+				"Tags": [{
+					"Key": "Name",
+					"Value": "AppServerEIP"
+				}]
+			}
+		}
+	},
+
+	"Outputs": {
+		"VPCID": {
+			"Description": "VPC Info.",
+			"Value": {
+				"Fn::Join": ["", [{
+					"Ref": "VPC"
+				}, " (", {
+					"Ref": "VpcCidr"
+				}, ")"]]
+			}
+		}
+
+	}
+
+}
