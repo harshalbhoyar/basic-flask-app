@@ -1,7 +1,7 @@
 {
 	"AWSTemplateFormatVersion": "2010-09-09",
 
-	"Description": "Template for creating two NAT Gateways in a new VPC. After successfully launching this CloudFormation stack, you will have 4 subnet in 2 AZs (a pair of pubilic/private subnets in each AZ), with NAT Gateways routing outbound traffic for their respective private subnets.",
+	"Description": "Template for creating a NAT Gateways in a new VPC. After successfully launching this CloudFormation stack, you will have 3 subnet in 2 AZs (a pair of a pubilic and 2 private subnets in each AZ), with NAT Gateways routing outbound traffic for their respective private subnets. Also it will sping a RDS postgres DB and an EC2 instance and deploy the basic flask app",
 
 	"Parameters": {
 
