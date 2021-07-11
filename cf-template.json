@@ -513,6 +513,10 @@
 					"Ref": "VpcCidr"
 				}, ")"]]
 			}
+		},
+		"InstancePublicIP": {
+			"Description": "Ec2 Instance Public IP",
+			"Value": { "Fn::GetAtt" : [ "AppServer", "PublicIp" ]}
 		}
 
 	}
