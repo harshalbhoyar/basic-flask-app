@@ -8,9 +8,9 @@ sudo usermod -a -G docker ec2-user
 
 sudo chkconfig docker on
 
-sudo yum install git -y 
+# sudo yum install git -y 
 
-git clone https://github.com/devendrabobde/basic-flask-app.git
+# git clone https://github.com/devendrabobde/basic-flask-app.git
 
 cd /home/ec2-user/basic-flask-app
 

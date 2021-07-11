@@ -403,7 +403,7 @@
 				"DBSubnetGroupDescription": "Availability Zones for RDS DB",
 				"SubnetIds": [{
 					"Ref": "PriSubnet1"
-				},{
+				}, {
 					"Ref": "PriSubnet2"
 				}]
 			}
@@ -471,7 +471,20 @@
 					"GroupSet": [{
 						"Ref": "AppServerSG"
 					}]
-				}]
+				}],
+				"UserData": {
+					"Fn::Base64": {
+						"Fn::Join": ["", [
+							"#!/bin/bash -xe\n",
+							"yum install -y git\n",
+							"cd /home/ec2-user/\n",
+							"git clone https://github.com/devendrabobde/basic-flask-app.git\n",
+							"cd /home/ec2-user/basic-flask-app\n",
+							"chmod +x /home/ec2-user/basic-flask-app/deploy_docker_image.sh\n",
+							"sh /home/ec2-user/basic-flask-app/deploy_docker_image.sh\n"
+						]]
+					}
+				}
 			}
 		},
 
